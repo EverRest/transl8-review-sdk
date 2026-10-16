@@ -4,6 +4,10 @@ This package is versioned independently of the transl8.ai product. Entries
 before the move to this repository were written when the package was
 `@transl8/review-sdk` and was self-hosted by the transl8.ai backend only.
 
+## 0.9.3 — 2026-10-16 — Package description; dead link removed from the README
+
+No behavior change. `package.json` has a `description` and `keywords`, so the npm page shows plain text. The README no longer links to a domain that is not registered. The bundle differs from 0.9.2 only in the version it reports (`X-Sdk-Version`).
+
 ## 0.9.2 — 2026-09-20 — Ask AI is hidden without `translation.analyze`
 
 **Patch** — no change to the exported surface. The inspector's "Ask AI"

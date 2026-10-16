@@ -1,6 +1,6 @@
 # @transl8.ai/review-sdk
 
-Browser SDK for in-context translation review with [transl8.ai](https://transl8.ai).
+Browser SDK for in-context translation review with the transl8.ai API.
 It adds a review launcher to your page: reviewers hover keyed text, inspect and
 propose translations, ask the AI for an analysis, and report issues. It talks to
 a transl8.ai backend through the `/sdk/*` API.
