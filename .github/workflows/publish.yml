@@ -1,0 +1,90 @@
+name: Publish @transl8.ai/review-sdk
+
+# Public npmjs, scope @transl8.ai, OIDC trusted publishing. The first version
+# is a local `npm publish` (the package must exist before a Trusted Publisher
+# can be attached). After that, this workflow publishes on a version bump -
+# no long-lived NPM_TOKEN.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'package.json'
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: '22'
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    name: Build, verify, and publish
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # Need the previous commit too, to detect whether package.json's
+          # version actually changed on this push (vs. another field in
+          # package.json triggering the path filter above).
+          fetch-depth: 2
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          registry-url: 'https://registry.npmjs.org'
+          scope: '@transl8.ai'
+
+      - name: Check whether the version actually bumped
+        id: version-check
+        run: |
+          NAME=$(node -p "require('./package.json').name")
+          CURRENT=$(node -p "require('./package.json').version")
+          PREVIOUS=$(git show HEAD^:package.json 2>/dev/null | node -p "JSON.parse(require('fs').readFileSync(0,'utf8')).version" 2>/dev/null || echo "none")
+          if [ "$CURRENT" = "$PREVIOUS" ] && [ "${{ github.event_name }}" != "workflow_dispatch" ]; then
+            echo "Version unchanged ($CURRENT) - skipping."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            if OUT=$(npm view "$NAME@$CURRENT" version 2>&1); then
+              echo "$NAME@$CURRENT is already on npm - skipping."
+              echo "changed=false" >> "$GITHUB_OUTPUT"
+            elif echo "$OUT" | grep -q "E404"; then
+              echo "$NAME@$CURRENT not on npm - will publish."
+              echo "changed=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "::error::npm view failed for a reason other than E404, not publishing: $OUT"
+              exit 1
+            fi
+          fi
+
+      - name: Install dependencies
+        if: steps.version-check.outputs.changed == 'true'
+        run: npm ci
+
+      - name: Typecheck, test and build
+        if: steps.version-check.outputs.changed == 'true'
+        run: |
+          npm run typecheck
+          npm test
+          npm run build
+
+      # Node 22 bundles npm 10.9.x, which cannot do OIDC trusted publishing
+      # (ENEEDAUTH); it needs npm >= 11.5.1.
+      - name: Upgrade npm for trusted publishing
+        if: steps.version-check.outputs.changed == 'true'
+        run: |
+          npm install -g 'npm@^11.5.1'
+          NPM_VERSION=$(npm -v)
+          echo "npm $NPM_VERSION"
+          [ "$(printf '%s\n11.5.1\n' "$NPM_VERSION" | sort -V | head -n1)" = "11.5.1" ] \
+            || { echo "npm $NPM_VERSION < 11.5.1 - trusted publishing would fail"; exit 1; }
+
+      - name: Publish
+        if: steps.version-check.outputs.changed == 'true'
+        # OIDC - npm CLI >= 11.5.1 detects the Actions token. No NODE_AUTH_TOKEN.
+        # The Trusted Publisher on npmjs must list this workflow filename
+        # (publish.yml) and this repository's owner/repo.
+        run: npm publish --access public
