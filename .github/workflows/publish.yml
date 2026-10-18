@@ -22,17 +22,22 @@ permissions:
 jobs:
   publish:
     name: Build, verify, and publish
+    # Publish only code that is merged to main. A manual run from any other
+    # branch would publish unmerged code.
+    # FOLLOW-UP: split into a verify job (no id-token) and a publish job, so
+    # install scripts and tests never run next to the OIDC publish token.
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
           # Need the previous commit too, to detect whether package.json's
           # version actually changed on this push (vs. another field in
           # package.json triggering the path filter above).
           fetch-depth: 2
 
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           registry-url: 'https://registry.npmjs.org'
@@ -62,7 +67,7 @@ jobs:
 
       - name: Install dependencies
         if: steps.version-check.outputs.changed == 'true'
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Typecheck, test and build
         if: steps.version-check.outputs.changed == 'true'
@@ -76,7 +81,7 @@ jobs:
       - name: Upgrade npm for trusted publishing
         if: steps.version-check.outputs.changed == 'true'
         run: |
-          npm install -g 'npm@^11.5.1'
+          npm install -g npm@11.21.1
           NPM_VERSION=$(npm -v)
           echo "npm $NPM_VERSION"
           [ "$(printf '%s\n11.5.1\n' "$NPM_VERSION" | sort -V | head -n1)" = "11.5.1" ] \
