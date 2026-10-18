@@ -42,7 +42,7 @@
     "@types/node": "^24.13.3",
     "esbuild": "^0.25.0",
     "jsdom": "^30.0.1",
-    "typescript": "^5.8.2",
+    "typescript": "^7.0.2",
     "vitest": "^3.2.6"
   },
   "dependencies": {
