@@ -17,8 +17,9 @@ updates:
         update-types: ['version-update:semver-major']
       - dependency-name: vitest
         update-types: ['version-update:semver-major']
+      # esbuild 0.x minors can change the served bundle; bump it by hand as an SDK release.
       - dependency-name: esbuild
-        update-types: ['version-update:semver-major']
+        update-types: ['version-update:semver-major', 'version-update:semver-minor']
       - dependency-name: '@types/node'
         update-types: ['version-update:semver-major']
   - package-ecosystem: github-actions
